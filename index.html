@@ -28,29 +28,5 @@
 <body>
     <!-- 内嵌目标页面，地址栏显示当前页面URL，隐藏真实IP -->
     <iframe id="hiddenFrame" src="https://101.133.133.21/"></iframe>
-
-    <script>
-        // 1. 禁止右键查看源码（普通用户级阻止）
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            alert('右键功能已禁用');
-        });
-
-        // 2. 禁止F12开发者工具（部分浏览器有效，增强隐藏效果）
-        document.addEventListener('keydown', function(e) {
-            // 禁止 F12、Ctrl+Shift+I、Ctrl+U（查看源码）
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-                (e.ctrlKey && e.key === 'u')) {
-                e.preventDefault();
-                alert('该操作已被限制');
-            }
-        });
-
-        // 3. 防止iframe被嵌套劫持（可选，增强安全性）
-        if (window.top !== window.self) {
-            window.top.location.href = window.location.href;
-        }
-    </script>
 </body>
 </html>
