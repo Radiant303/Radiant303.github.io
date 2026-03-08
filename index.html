@@ -935,9 +935,34 @@
         copyBtn.addEventListener('click', async () => {
             if (copyBtn.classList.contains('copied')) return;
 
-            try {
-                await navigator.clipboard.writeText('https://api.guoliguoli.cc');
+            const textToCopy = 'https://api.guoliguoli.cc';
+            let copied = false;
 
+            // 尝试现代 Clipboard API
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                copied = true;
+            } catch (err) {
+                console.warn('Clipboard API 失败，尝试降级方案:', err);
+
+                // 降级方案：使用 execCommand
+                try {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    textarea.setSelectionRange(0, 99999); // 移动端兼容
+
+                    copied = document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                } catch (fallbackErr) {
+                    console.error('降级方案也失败:', fallbackErr);
+                }
+            }
+
+            if (copied) {
                 // 切换到成功状态
                 copyBtn.classList.add('copied');
                 copyIcon.style.display = 'none';
@@ -956,8 +981,9 @@
                     copyIcon.offsetHeight;
                     copyIcon.style.animation = 'iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
                 }, 1500);
-            } catch (err) {
-                console.error('复制失败:', err);
+            } else {
+                // 可选：提示用户手动复制
+                alert('自动复制失败，请手动选择并复制链接');
             }
         });
     </script>
