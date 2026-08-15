@@ -114,9 +114,19 @@ main section { margin: 0 0 clamp(84px, 13vh, 140px); }
   max-width: 900px; display: grid; grid-template-columns: repeat(4, 1fr);
   gap: 20px 32px; margin-bottom: 44px;
 }
-.facts > div { border-top: 1px solid var(--hairline); padding-top: 12px; }
-.facts dt { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--spring); margin-bottom: 6px; }
-.facts dd { font-size: 14.5px; color: var(--ink); line-height: 1.65; }
+/* 不再用整根横线（与节标题的发丝线重复）——给每个标签一截春绿小短线，
+   同一笔意、不同尺度；悬停时小短线伸长一点 */
+.facts dt {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .18em; color: var(--spring);
+  margin-bottom: 8px;
+}
+.facts dt::before {
+  content: ""; flex: none; width: 14px; height: 1px; background: var(--spring);
+  transition: width .35s var(--ease-out);
+}
+.facts > div:hover dt::before { width: 24px; }
+.facts dd { font-size: 15px; color: var(--ink); line-height: 1.65; }
 .facts dd a { color: var(--spring); }
 .facts dd a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .about-prose { max-width: 46em; }
