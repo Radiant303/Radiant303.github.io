@@ -3,6 +3,8 @@
 个人博客——也是一份活着的简历。封面是 `resource/background.png`（新海诚风原野），画面底部溶进纯白正文区。
 `index.html` + `post.html`，原生 JS 手写，无框架、无构建。
 
+![主页截图](resource/screenshot.jpg)
+
 ## 目录结构
 
 ```
