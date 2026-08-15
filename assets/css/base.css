@@ -1,0 +1,99 @@
+/* ============================================================
+   全站共用：变量 / 重置 / 液态玻璃 / Markdown 骨架 / GitHub 卡片
+   index.html 与 post.html 都先加载本文件，再加载各自的页面样式。
+   ==========================================================*/
+:root {
+  --paper: #ffffff;          /* 素白 */
+  --ink: #13293d;            /* 深夜蓝黑 */
+  --ink-2: rgba(19, 41, 61, .64);
+  --ink-3: rgba(19, 41, 61, .42);
+  --spring: #1c7c50;         /* 春绿，唯一强调色 */
+  --hairline: rgba(19, 41, 61, .16);
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+  --ease-spring: cubic-bezier(.22, .9, .26, 1.08);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--serif);
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+::selection { background: rgba(28, 124, 80, .16); }
+a { color: inherit; text-decoration: none; }
+a:focus-visible { outline: 2px solid var(--spring); outline-offset: 3px; border-radius: 4px; }
+
+/* ============ 液态玻璃（首页导航滑块 / 文章页返回按钮） ============ */
+.glass {
+  position: relative;
+  border-radius: var(--r, 999px);
+  background: linear-gradient(135deg, rgba(255,255,255,.30), rgba(255,255,255,.08) 55%, rgba(255,255,255,.20));
+  box-shadow: 0 10px 30px rgba(19, 41, 61, .14), 0 2px 6px rgba(19, 41, 61, .06);
+}
+.glass::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-bottom-color: rgba(19, 41, 61, .12);
+  pointer-events: none;
+}
+.glass::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .7),
+    inset 1px 0 0 rgba(255, 255, 255, .25),
+    inset -1px 0 0 rgba(255, 255, 255, .16),
+    inset 0 -1px 0 rgba(19, 41, 61, .08);
+  pointer-events: none;
+}
+.glass-fallback .glass, .no-js .glass {
+  background: rgba(255, 255, 255, .5);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* ============ Markdown 排版骨架 ============
+   两页共用的部分在这里；文字颜色、行高、标题间距/字号等
+   随页面气质不同的微调，放在各自的页面样式里。 */
+.prose { font-size: 15.5px; }
+.prose > :first-child { margin-top: 0; }
+.prose h2, .prose h3, .prose h4 { color: var(--ink); line-height: 1.5; font-weight: 900; }
+.prose a { color: var(--spring); text-decoration: underline; text-underline-offset: 3px; }
+.prose strong { color: var(--ink); font-weight: 900; }
+.prose code {
+  font-family: var(--mono); font-size: .84em;
+  background: rgba(19, 41, 61, .06); border: 1px solid rgba(19, 41, 61, .10);
+  padding: .12em .42em; border-radius: 5px; word-break: break-all;
+}
+.prose pre {
+  background: #232323;
+  border-radius: 10px; padding: 15px 18px; overflow-x: auto; margin: 1em 0;
+}
+.prose pre code { background: none; border: 0; padding: 0; font-size: 13px; line-height: 1.75; color: #e9e9e6; }
+.prose ul, .prose ol { padding-left: 1.4em; margin: .6em 0; }
+.prose li + li { margin-top: .3em; }
+.prose blockquote { border-left: 2px solid var(--spring); padding-left: 14px; margin: .9em 0; }
+.prose hr { border: 0; border-top: 1px solid var(--hairline); margin: 1.5em 0; }
+.prose img { max-width: 100%; border-radius: 10px; display: block; margin: 1em 0; }
+
+/* ============ GitHub 原生 Social Preview：图片本身承载仓库信息 ============ */
+.gh-card { margin: 1.15em 0; }
+a.ghc, .prose a.ghc {
+  display: block; width: 100%; aspect-ratio: 2 / 1; overflow: hidden;
+  border: 1px solid var(--hairline); border-radius: 8px;
+  background: #f6f8fa; color: inherit; text-decoration: none;
+  transition: border-color .25s, box-shadow .25s var(--ease-out), transform .25s var(--ease-out);
+}
+a.ghc:hover {
+  border-color: rgba(19, 41, 61, .30);
+  box-shadow: 0 12px 28px rgba(19, 41, 61, .10);
+  transform: translateY(-2px);
+}
+.ghc img {
+  display: block; width: 100%; height: 100%; margin: 0;
+  border: 0; border-radius: 0; object-fit: cover;
+}

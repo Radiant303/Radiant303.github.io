@@ -1,0 +1,76 @@
+/* ============================================================
+   文章页特有样式（在 base.css 之后加载）
+   ==========================================================*/
+body { min-height: 100svh; }
+
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 28px;
+  transition: transform .5s var(--ease-out), opacity .5s var(--ease-out);
+}
+.topbar.hide { transform: translateY(-130%); opacity: 0; pointer-events: none; }
+.back {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 18px; font-size: 13.5px;
+  color: var(--ink); --r: 999px;
+}
+.back span { transition: transform .3s var(--ease-out); }
+.back:hover span { transform: translateX(-3px); }
+.brand {
+  font-weight: 900; font-size: 12.5px; letter-spacing: .08em;
+  color: var(--ink-3);
+  text-shadow: 0 0 14px #fff, 0 0 5px #fff;   /* 文字经过时保持可读 */
+}
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 128px 24px 90px; }
+.page-in { animation: pageIn .8s var(--ease-out) both; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page-in { animation: none; } }
+
+/* 文章直接印在纸上：无卡片、无边框 */
+.date { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--spring); margin-bottom: 14px; }
+h1 {
+  font-weight: 900;
+  font-size: clamp(1.75rem, 4.4vw, 2.5rem); line-height: 1.35; letter-spacing: .01em;
+}
+.head-rule {
+  display: flex; align-items: center; gap: 12px;
+  margin: 26px 0 34px;
+}
+.head-rule i { width: 26px; height: 5px; background: var(--spring); border-radius: 2px; }
+.head-rule::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+
+/* Markdown 排版：长文阅读的密度与颜色（骨架在 base.css） */
+/* 500 字重 + 略大字号 + 字距：中文衬线长文不「飘」；两端对齐让中西文混排行尾整齐 */
+.prose {
+  font-weight: 500; font-size: 16.5px; line-height: 1.95; color: #191b1f;  /* 中性近黑，长文阅读对比度足够 */
+  letter-spacing: .015em; text-align: justify; text-justify: inter-ideograph;
+}
+.prose p + p { margin-top: .85em; }
+.prose h2, .prose h3, .prose h4 { margin: 1.6em 0 .6em; }
+.prose h2 { font-size: 1.32em; }
+.prose h3 { font-size: 1.16em; } .prose h4 { font-size: 1.04em; }
+
+/* 底部导航：左上一篇、右下一篇；没有则回到首页（JS 填充，空时不显示） */
+.post-nav {
+  margin-top: 64px; padding-top: 26px;
+  border-top: 1px solid var(--hairline);
+  display: flex; justify-content: space-between; gap: 24px;
+}
+.post-nav:empty { display: none; }
+.pn { display: block; max-width: 46%; min-width: 0; }
+.pn-next { margin-left: auto; text-align: right; }
+.pn-dir {
+  display: block; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .14em; color: var(--ink-3); margin-bottom: 6px;
+}
+.pn-title {
+  display: block; font-weight: 900; font-size: 15px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color .3s;
+}
+.pn:hover .pn-title { color: var(--spring); }
+
+.missing { text-align: center; padding: 60px 0; }
+.missing p { color: var(--ink-2); font-size: 14.5px; }

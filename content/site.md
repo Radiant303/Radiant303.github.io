@@ -6,19 +6,16 @@
 
 ## hero
 brand: Radiant303
-eyebrow: **Radiant303** 的个人博客 · Blog
-title: 我还在做东西。
-sub: 写代码的大学生。白天写业务，晚上做自己的东西——笔记、Agent，还有一些说不上名字但好玩的实验。
-hint: 往下滚动，分居两侧的导航会向中间聚拢——中间那块滑块，是真的在**折射它底下的字**。
+title: Hello, World.
+sub: 我是 Radiant303。欢迎来到我的主页——这里记录着我在做什么想什么。
+hint: 我们凝望着最初的凝望，感到另一颗心跨越时空，望见**生命的力量之和**。
 time: 本地时间
 cue: SCROLL
 
 ## nav
 about: 关于
 work: 作品
-now: 此刻
-tech: 技术
-notes: 手记
+articles: 文章
 contact: 联系
 
 ## about
@@ -30,17 +27,11 @@ title: 关于我
 
 ## work
 title: 做的东西
-sub: 完整的软件、小工具、说不上名字的实验，还有一些学到一半的笔记。没完成的不藏。
+sub: 完整的软件、小工具、说不上名字的实验，还有一些学到一半的笔记。
 
-## now
-title: 此刻
-
-## tech
-title: 技术笔记
-sub: 把做东西时真正搞懂的问题写下来——比「用了什么技术」更重要的，是为什么这么做。
-
-## notes
-title: 手记
+## articles
+title: 文章
+sub: 这里放我想认真写下来的东西：技术、生活，以及那些值得慢慢说完的事。
 
 ## footer
 who: Radiant303
