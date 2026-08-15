@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<!--
+  Radiant303 · 我还在做东西
+  ------------------------------------------------------------------
+  春日工作台：明亮的新海诚式风景 + 真实折射的液态玻璃。
+  · 液态玻璃与水面折射：SVG feDisplacementMap，位移图由 canvas 逐像素
+    按 fragment 函数生成 —— 思路来自 shuding/svg-shaders 与
+    shuding/liquid-glass（MIT），在此致谢。
+  · 动效语言：弹簧惯性的进场、倾斜、拖拽（参考 paulineosmont.com 的
+    物理感交互），全部手写原生 JS，无框架、无构建。
+  · 背景图：resource/background.png。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radiant303 · 我还在做东西</title>
+<meta name="description" content="这不是简历，是一个人的工作台。Radiant303 的个人主页——我还在做东西。">
+<meta name="theme-color" content="#a9d6ef">
+<meta property="og:title" content="Radiant303 · 我还在做东西">
+<meta property="og:description" content="这不是简历，是一个人的工作台。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://radiant303.github.io/resource/background.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a9d6ef'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%23ffffff' stroke-opacity='.85' stroke-width='2'/%3E%3Ctext x='32' y='45' font-family='serif' font-size='34' text-anchor='middle' fill='%231c5c3f'%3E%E6%98%A5%3C/text%3E%3C/svg%3E">
+<link rel="preload" as="image" href="resource/background.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ 基础 ============ */
+:root {
+  --ink: #13293d;            /* 深湖水蓝，压在天空上也读得清 */
+  --ink-2: rgba(19, 41, 61, .68);
+  --ink-3: rgba(19, 41, 61, .46);
+  --spring: #1c7c50;         /* 春绿，唯一强调色 */
+  --hairline: rgba(255, 255, 255, .55);
+  --hairline-d: rgba(19, 41, 61, .10);
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+  --ease-spring: cubic-bezier(.22, .9, .26, 1.08);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  color: var(--ink);
+  background: #a9d6ef;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+::selection { background: rgba(28, 124, 80, .22); }
+a { color: inherit; text-decoration: none; }
+a:focus-visible { outline: 2px solid var(--spring); outline-offset: 3px; border-radius: 4px; }
+
+/* ============ 背景：风景 + 呼吸 ============ */
+.bg {
+  position: fixed; inset: -3%;
+  background: url("resource/background.png") center / cover no-repeat;
+  z-index: -2;
+  animation: breathe 70s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes breathe {
+  from { transform: scale(1.00) translateY(0); }
+  to   { transform: scale(1.06) translateY(-1.2%); }
+}
+/* 湖面：一条会折射的"水" */
+.water {
+  position: fixed; left: 0; right: 0;
+  top: 57vh; height: 26vh;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+  mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+
+/* ============ 液态玻璃 ============ */
+.glass {
+  position: relative;
+  border-radius: var(--r, 22px);
+  background: linear-gradient(135deg, rgba(255,255,255,.20), rgba(255,255,255,.06) 55%, rgba(255,255,255,.14));
+  box-shadow: 0 12px 40px rgba(19, 41, 61, .12), 0 2px 8px rgba(19, 41, 61, .06);
+}
+/* 发丝边（元素内容，不干扰 backdrop 折射） */
+.glass::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  border: 1px solid var(--hairline);
+  border-bottom-color: var(--hairline-d);
+  pointer-events: none;
+}
+/* 沿整个圆角边框走的边缘光（上亮下暗，像真实玻璃的倒角） */
+.glass::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .65),
+    inset 1px 0 0 rgba(255, 255, 255, .22),
+    inset -1px 0 0 rgba(255, 255, 255, .14),
+    inset 0 -1px 0 rgba(19, 41, 61, .07);
+  pointer-events: none;
+}
+/* 不支持 url() 滤镜的浏览器：磨砂回退 */
+.glass-fallback .glass,
+.no-js .glass {
+  background: rgba(255, 255, 255, .48);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+.glass-fallback .water, .no-js .water { display: none; }
+
+/* ============ 导航 ============ */
+.nav {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+  z-index: 50;
+  --r: 999px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.nav .brand {
+  font-family: var(--serif); font-weight: 900; font-size: 15px;
+  padding: 4px 12px 4px 10px; letter-spacing: .02em;
+}
+.nav .links { display: flex; gap: 2px; }
+.nav .links a {
+  position: relative; padding: 4px 10px; border-radius: 999px;
+  color: var(--ink-2); transition: color .25s;
+}
+.nav .links a::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px;
+  height: 1.5px; border-radius: 2px; background: var(--spring);
+  transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease-out);
+}
+.nav .links a:hover { color: var(--ink); }
+.nav .links a:hover::after { transform: scaleX(1); }
+
+/* ============ 版式骨架 ============ */
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+section { margin: 0 0 clamp(110px, 18vh, 190px); }
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .18em;
+  color: var(--ink-3); text-transform: uppercase;
+  display: flex; align-items: center; gap: 14px; margin-bottom: 26px;
+}
+.eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--hairline-d); }
+.eyebrow b { color: var(--spring); font-weight: 500; }
+
+/* ============ Hero ============ */
+.hero { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-top: 90px; }
+.hero .eyebrow { margin-bottom: 34px; }
+h1 {
+  font-family: var(--serif); font-weight: 900;
+  font-size: clamp(2.9rem, 8.5vw, 6.4rem);
+  line-height: 1.14; letter-spacing: .01em;
+  text-shadow: 0 1px 14px rgba(255, 255, 255, .4);
+  margin-bottom: 30px;
+}
+h1 .ch { display: inline-block; overflow: hidden; vertical-align: bottom; }
+h1 .ch > span { display: inline-block; transform: translateY(110%); }
+.no-js h1 .ch > span { transform: none; }
+.hero .sub {
+  max-width: 30em; font-size: clamp(1rem, 1.6vw, 1.13rem);
+  color: var(--ink-2); text-shadow: 0 1px 10px rgba(255,255,255,.35);
+}
+.hero .hint { margin-top: 26px; font-size: 13.5px; color: var(--ink-3); }
+.hero .hint b { color: var(--spring); font-weight: 500; }
+.hero .time {
+  margin-top: 14px; font-family: var(--mono); font-size: 12.5px;
+  letter-spacing: .08em; color: var(--ink-3);
+}
+/* 可拖拽的「春」玻璃块 */
+.haru {
+  position: fixed; z-index: 40;
+  right: clamp(24px, 9vw, 130px); top: 26vh;
+  width: 124px; height: 124px; --r: 30px;
+  display: grid; place-items: center;
+  font-family: var(--serif); font-weight: 900; font-size: 54px;
+  color: #173a2a; text-shadow: 0 1px 0 rgba(255,255,255,.5);
+  cursor: grab; user-select: none; -webkit-user-select: none;
+  touch-action: none;
+}
+.haru:active { cursor: grabbing; }
+
+/* ============ 作品 ============ */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.card {
+  --r: 22px;
+  padding: 24px 24px 20px;
+  display: flex; flex-direction: column; min-height: 218px;
+  transform-style: preserve-3d; will-change: transform;
+  transition: box-shadow .4s;
+}
+.card:hover { box-shadow: 0 22px 60px rgba(19, 41, 61, .18), 0 4px 12px rgba(19, 41, 61, .08); }
+.card .glare {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(320px circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.34), transparent 65%);
+  opacity: 0; transition: opacity .4s;
+}
+.card:hover .glare { opacity: 1; }
+.card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.card h3 { font-family: var(--sans); font-weight: 600; font-size: 17.5px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.chip {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(255,255,255,.4); border: 1px solid var(--hairline);
+  color: var(--ink-2);
+}
+.chip i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.doing  { color: #157347; }
+.chip.new    { color: #1668b4; }
+.chip.lab    { color: #6d4fc2; }
+.chip.shipped{ color: #b45f06; }
+.chip.learning{ color: #5c6b7a; }
+.card p { font-size: 14px; color: var(--ink-2); line-height: 1.7; }
+.card .meta {
+  margin-top: auto; padding-top: 16px;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em;
+  color: var(--ink-3);
+}
+.card .links { margin-top: 10px; display: flex; gap: 16px; font-size: 13px; font-weight: 500; }
+.card .links a { color: var(--spring); position: relative; }
+.card .links a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: left;
+  transition: transform .3s var(--ease-out);
+}
+.card .links a:hover::after { transform: scaleX(1); }
+
+/* ============ 此刻 / 碎语 ============ */
+.now-card { --r: 26px; padding: clamp(26px, 4vw, 44px); max-width: 760px; }
+.now-card .date { font-family: var(--mono); font-size: 12.5px; letter-spacing: .14em; color: var(--spring); margin-bottom: 14px; }
+.now-card p { font-size: 15.5px; color: var(--ink-2); }
+.now-card p + p { margin-top: 12px; }
+.notes { max-width: 760px; }
+.notes p {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(1.25rem, 2.6vw, 1.8rem); line-height: 1.8;
+  text-shadow: 0 1px 12px rgba(255,255,255,.4);
+}
+.notes p + p { margin-top: 34px; }
+.notes .small {
+  font-family: var(--sans); font-weight: 400; font-size: 15px;
+  color: var(--ink-2); text-shadow: none;
+}
+
+/* ============ 页脚 ============ */
+footer { padding: 0 0 60px; }
+.foot {
+  border-top: 1px solid var(--hairline-d); padding-top: 34px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 24px; flex-wrap: wrap;
+}
+.foot .who { font-family: var(--serif); font-weight: 900; font-size: 20px; }
+.foot .links { display: flex; gap: 20px; font-size: 14px; font-weight: 500; }
+.foot .links a { color: var(--spring); }
+.foot .links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.foot .note { font-size: 12.5px; color: var(--ink-3); width: 100%; }
+.foot .note code { font-family: var(--mono); font-size: 11.5px; }
+
+/* ============ 进场动效 ============ */
+[data-reveal] {
+  opacity: 0; transform: translateY(34px) scale(.985);
+  transition: opacity .9s var(--ease-out), transform .9s var(--ease-spring);
+}
+[data-reveal].in { opacity: 1; transform: none; }
+.no-js [data-reveal] { opacity: 1; transform: none; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) {
+  .cards { grid-template-columns: 1fr; }
+  .nav { font-size: 12px; padding: 6px 8px; gap: 2px; max-width: calc(100vw - 20px); }
+  .nav .brand { font-size: 13.5px; padding: 4px 6px 4px 8px; }
+  .nav .links a { padding: 4px 7px; }
+  .haru { width: 92px; height: 92px; font-size: 40px; top: auto; bottom: 12vh; right: 20px; --r: 24px; }
+  .water { top: 60vh; height: 20vh; }
+  .foot { align-items: flex-start; flex-direction: column; }
+}
+
+/* ============ 动效降级 ============ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .bg { animation: none; }
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  h1 .ch > span { transform: none; }
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+<noscript><style>
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+  h1 .ch > span { transform: none !important; }
+  .glass { background: rgba(255,255,255,.48); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); }
+  .water { display: none; }
+</style></noscript>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+<div class="water" data-water aria-hidden="true"></div>
+
+<nav class="nav glass" data-glass data-radius="999" data-bezel="18" data-rim="8" aria-label="页面导航">
+  <span class="brand">Radiant303</span>
+  <div class="links">
+    <a href="#work">作品</a>
+    <a href="#now">此刻</a>
+    <a href="#notes">碎语</a>
+    <a href="#contact">联系</a>
+  </div>
+</nav>
+
+<div class="haru glass" data-glass data-radius="30" data-bezel="26" data-rim="12" id="haru" role="img" aria-label="一块写着春字的液态玻璃，可以拖拽">春</div>
+
+<main class="wrap">
+
+  <!-- Hero -->
+  <section class="hero">
+    <p class="eyebrow" style="margin-bottom:34px"><b>Radiant303</b> 个人工作台 · Workbench</p>
+    <h1 id="title">我还在做东西。</h1>
+    <p class="sub" data-reveal>写代码的大学生。白天写业务，晚上做自己的东西——笔记、Agent，还有一些说不上名字但好玩的实验。</p>
+    <p class="hint" data-reveal style="transition-delay:.15s">页面上那块「春」字玻璃是真的在<b>折射背后的风景</b>——可以拖着玩。</p>
+    <p class="time" data-reveal style="transition-delay:.25s">本地时间 <span id="clock">--:--:--</span> · UTC+8</p>
+  </section>
+
+  <!-- 作品 -->
+  <section id="work">
+    <p class="eyebrow" data-reveal><b>01</b> 做的东西 · Work</p>
+    <div class="cards">
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal>
+        <div class="top"><h3>SpringNote</h3><span class="chip doing"><i></i>进行中</span></div>
+        <p>给懒人用的笔记：随手记，剩下的交给 AI——自动整理成日报、周报、月报；全局标签，回忆搜索。</p>
+        <p class="meta">Flutter · Dart · 504 stars · 51 forks · AGPL-3.0 · 2026-06 起</p>
+        <div class="links"><a href="https://github.com/Radiant303/SpringNote">GitHub</a><a href="https://radiant303.github.io/SpringNote/">主页</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal style="transition-delay:.06s">
+        <div class="top"><h3>SpringHarness</h3><span class="chip new"><i></i>刚开始</span></div>
+        <p>对 Agent 工程化的一次整理：PydanticAI、Harness、工具调用。尝试回归古法编程。</p>
+        <p class="meta">PydanticAI · Harness · 工具调用 · 2026-08-14 起</p>
+        <div class="links"><a href="https://github.com/Radiant303/spring-harness">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal style="transition-delay:.12s">
+        <div class="top"><h3>LoraQwen</h3><span class="chip lab"><i></i>实验</span></div>
+        <p>为 SpringNote 微调的 Qwen 模型，负责日报补全与问答。</p>
+        <p class="meta">Python · Qwen 微调</p>
+        <div class="links"><a href="https://github.com/Radiant303/LoraQwen">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal>
+        <div class="top"><h3>astrbot_plugin_clonetts</h3><span class="chip shipped"><i></i>已发布</span></div>
+        <p>接入火山引擎音色克隆的 AstrBot TTS 插件，让聊天机器人用克隆音色「说话」。</p>
+        <p class="meta">Python · AstrBot · 46 stars</p>
+        <div class="links"><a href="https://github.com/Radiant303/astrbot_plugin_clonetts">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal style="transition-delay:.06s">
+        <div class="top"><h3>markdownPreviewService</h3><span class="chip lab"><i></i>实验</span></div>
+        <p>Rust + Axum 写的微服务：把 Markdown 渲染成 PNG 图片。</p>
+        <p class="meta">Rust · Axum</p>
+        <div class="links"><a href="https://github.com/Radiant303/markdownPreviewService">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal style="transition-delay:.12s">
+        <div class="top"><h3>springnote-skill</h3><span class="chip new"><i></i>刚开始</span></div>
+        <p>「懒人记录」Skills——让记录这件事再省一步。</p>
+        <p class="meta">2026-08 起</p>
+        <div class="links"><a href="https://github.com/Radiant303/springnote-skill">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal>
+        <div class="top"><h3>pydantic-ai</h3><span class="chip learning"><i></i>学习中</span></div>
+        <p>「pydanticAI 学习路线」笔记仓库。笔记会厚，这条路还长。</p>
+        <p class="meta">Python · 学习笔记</p>
+        <div class="links"><a href="https://github.com/Radiant303/pydantic-ai">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+      <article class="card glass" data-glass data-radius="22" data-bezel="26" data-reveal style="transition-delay:.06s">
+        <div class="top"><h3>cc-switch-kimicode</h3><span class="chip learning"><i></i>学习中</span></div>
+        <p>一个 Rust 工具的分支，专注于更完整的 Kimi Code 支持。</p>
+        <p class="meta">Rust · 分支维护</p>
+        <div class="links"><a href="https://github.com/Radiant303/cc-switch-kimicode">GitHub</a></div>
+        <span class="glare"></span>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- 此刻 -->
+  <section id="now">
+    <p class="eyebrow" data-reveal><b>02</b> 此刻 · Now</p>
+    <div class="now-card glass" data-glass data-radius="26" data-bezel="30" data-reveal>
+      <p class="date">2026 · 08</p>
+      <p>SpringNote 还在继续——日报、全局签、回忆搜索，AI 到底该判断什么，我还在一条一条地想。</p>
+      <p>SpringHarness 刚刚开始，几乎是空的：它此刻的状态，本身就是「进行中」。在想的事：语音经 ASR、Agent、TTS 一个来回；一千个工具怎么注册、怎么被找到。</p>
+    </div>
+  </section>
+
+  <!-- 碎语 -->
+  <section id="notes" class="notes">
+    <p class="eyebrow" data-reveal><b>03</b> 碎语 · Notes</p>
+    <p data-reveal>这不是简历，是一个人的工作台。</p>
+    <p data-reveal style="transition-delay:.08s">记录的不是「掌握了多少技术」，<br>而是这些技术最后被拿去做了什么。</p>
+    <p data-reveal style="transition-delay:.16s">喜欢把复杂藏在产品下面，把简单留给用的人。</p>
+    <p class="small" data-reveal style="transition-delay:.24s">也会为了一个没对齐的字符改很久——东西看起来像「有人认真做过」就好。慢慢做，还在做。这个页面也不是完成品。</p>
+  </section>
+
+</main>
+
+<footer id="contact">
+  <div class="wrap">
+    <div class="foot" data-reveal>
+      <p class="who">Radiant303</p>
+      <div class="links">
+        <a href="https://github.com/Radiant303">github.com/Radiant303</a>
+        <a href="mailto:3511078185@qq.com">3511078185@qq.com</a>
+      </div>
+      <p class="note">这个页面也一直在改——就像项目，像代码，像我自己。<br><code>手写 SVG 位移滤镜 · 原生 JS · 无框架</code> · 玻璃折射思路致谢 <code>shuding/svg-shaders</code>（MIT）</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ============================================================
+   * SVG 位移着色器（思路来自 shuding/svg-shaders · liquid-glass，MIT）
+   * fragment(uv) -> 采样位置；偏移编码进 R/G 通道，feDisplacementMap 折射
+   * ==========================================================*/
+  var NS = 'http://www.w3.org/2000/svg';
+  var XL = 'http://www.w3.org/1999/xlink';
+
+  function smoothStep(a, b, t) {
+    t = Math.max(0, Math.min(1, (t - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  }
+  function sdfRoundRect(x, y, w, h, r) {
+    var qx = Math.abs(x) - w + r, qy = Math.abs(y) - h + r;
+    return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
+  }
+
+  var supported = CSS.supports('backdrop-filter', 'url("#lg-probe")');
+  if (!supported) document.documentElement.classList.add('glass-fallback');
+
+  /* 2x2 纯白图：直边元素（水面）的"全通过"蒙版 */
+  var WHITE_PX = (function () {
+    var c = document.createElement('canvas');
+    c.width = c.height = 2;
+    var x = c.getContext('2d');
+    x.fillStyle = '#fff';
+    x.fillRect(0, 0, 2, 2);
+    return c.toDataURL('image/png');
+  })();
+
+  var svgRoot = null, defs = null, seq = 0;
+
+  function ensureSvg() {
+    if (svgRoot) return;
+    svgRoot = document.createElementNS(NS, 'svg');
+    svgRoot.setAttribute('width', '0');
+    svgRoot.setAttribute('height', '0');
+    svgRoot.setAttribute('aria-hidden', 'true');
+    svgRoot.style.cssText = 'position:fixed;left:0;top:0;pointer-events:none;overflow:hidden';
+    defs = document.createElementNS(NS, 'defs');
+    svgRoot.appendChild(defs);
+    document.body.insertBefore(svgRoot, document.body.firstChild);
+  }
+
+  /* fragment -> {url, scale}；通道 0.5±0.5 映射 ±max，scale=2*max 还原像素位移 */
+  function buildMap(w, h, dpr, fragment) {
+    var cw = Math.max(2, Math.round(w * dpr));
+    var ch = Math.max(2, Math.round(h * dpr));
+    var canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    var ctx = canvas.getContext('2d');
+    var img = ctx.createImageData(cw, ch);
+    var data = img.data;
+    var raw = new Float32Array(cw * ch * 2);
+    var max = 0.001;
+    for (var y = 0, p = 0; y < ch; y++) {
+      for (var x = 0; x < cw; x++, p += 2) {
+        var pos = fragment(x / cw, y / ch);
+        var dx = pos.x * w - (x / cw) * w;
+        var dy = pos.y * h - (y / ch) * h;
+        raw[p] = dx; raw[p + 1] = dy;
+        if (Math.abs(dx) > max) max = Math.abs(dx);
+        if (Math.abs(dy) > max) max = Math.abs(dy);
+      }
+    }
+    for (var i = 0, q = 0; i < data.length; i += 4, q += 2) {
+      data[i]     = (0.5 + 0.5 * raw[q] / max) * 255;
+      data[i + 1] = (0.5 + 0.5 * raw[q + 1] / max) * 255;
+      data[i + 2] = 0;
+      data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return { url: canvas.toDataURL('image/png'), scale: 2 * max };
+  }
+
+  /* 圆角矩形蒙版：把滤镜输出裁回元素形状。
+     Chrome 的 backdrop-filter url() 滤镜区域是矩形、不随 border-radius 裁切，
+     需要在滤镜内部用 feComposite in 自己裁掉圆角之外的部分 */
+  function buildMask(w, h, dpr, radius) {
+    var cw = Math.max(2, Math.round(w * dpr));
+    var ch = Math.max(2, Math.round(h * dpr));
+    var canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    var ctx = canvas.getContext('2d');
+    var r = Math.min(radius * dpr, cw / 2, ch / 2);
+    var o = 2 * dpr;   /* 蒙版外扩 2px：盖住元素边缘的抗锯齿像素，
+                          否则 feComposite 会在边框内侧留下一圈未折射的细缝 */
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-o, -o, cw + 2 * o, ch + 2 * o, r + o);
+    } else {
+      var rr = r + o, x0 = -o, y0 = -o, x1 = cw + o, y1 = ch + o;
+      ctx.moveTo(x0 + rr, y0);
+      ctx.arcTo(x1, y0, x1, y1, rr);
+      ctx.arcTo(x1, y1, x0, y1, rr);
+      ctx.arcTo(x0, y1, x0, y0, rr);
+      ctx.arcTo(x0, y0, x1, y0, rr);
+      ctx.closePath();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    return canvas.toDataURL('image/png');
+  }
+
+  function makeFilter(w, h) {
+    var id = 'lg-' + (seq++);
+    var f = document.createElementNS(NS, 'filter');
+    f.setAttribute('id', id);
+    f.setAttribute('filterUnits', 'userSpaceOnUse');
+    f.setAttribute('color-interpolation-filters', 'sRGB');
+    f.setAttribute('x', '0'); f.setAttribute('y', '0');
+    f.setAttribute('width', w); f.setAttribute('height', h);
+    var fe = document.createElementNS(NS, 'feImage');
+    fe.setAttribute('result', 'map');
+    fe.setAttribute('preserveAspectRatio', 'none');
+    fe.setAttribute('width', w); fe.setAttribute('height', h);
+    var dm = document.createElementNS(NS, 'feDisplacementMap');
+    dm.setAttribute('in', 'SourceGraphic');
+    dm.setAttribute('in2', 'map');
+    dm.setAttribute('xChannelSelector', 'R');
+    dm.setAttribute('yChannelSelector', 'G');
+    dm.setAttribute('result', 'disp');
+    var feMask = document.createElementNS(NS, 'feImage');
+    feMask.setAttribute('result', 'mask');
+    feMask.setAttribute('preserveAspectRatio', 'none');
+    feMask.setAttribute('width', w); feMask.setAttribute('height', h);
+    var comp = document.createElementNS(NS, 'feComposite');
+    comp.setAttribute('in', 'disp');
+    comp.setAttribute('in2', 'mask');
+    comp.setAttribute('operator', 'in');
+    f.appendChild(fe); f.appendChild(dm); f.appendChild(feMask); f.appendChild(comp);
+    defs.appendChild(f);
+    return { id: id, node: f, fe: fe, dm: dm, feMask: feMask };
+  }
+
+  function setMap(filter, w, h, map) {
+    filter.node.setAttribute('width', w);
+    filter.node.setAttribute('height', h);
+    filter.fe.setAttribute('width', w);
+    filter.fe.setAttribute('height', h);
+    filter.fe.setAttribute('href', map.url);
+    filter.fe.setAttributeNS(XL, 'xlink:href', map.url);
+    filter.dm.setAttribute('scale', map.scale.toFixed(2));
+    if (filter.feMask && map.mask) {
+      filter.feMask.setAttribute('width', w);
+      filter.feMask.setAttribute('height', h);
+      filter.feMask.setAttribute('href', map.mask);
+      filter.feMask.setAttributeNS(XL, 'xlink:href', map.mask);
+    }
+  }
+
+  function debounce(fn, ms) {
+    var t = null;
+    return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+
+  /* 液态玻璃：边缘 bezel 过渡带内，采样点沿法线方向内收固定的 rim 像素——
+     位移量以像素为单位，与元素尺寸无关，避免大块玻璃边缘出现"重影" */
+  function glassFragment(w, h, opts) {
+    var R = Math.min(opts.radius, Math.min(w, h) / 2);
+    var B = opts.bezel, rim = opts.rim, mag = 0.015;
+    return function (u, v) {
+      var px = (u - 0.5) * w, py = (v - 0.5) * h;
+      var d = sdfRoundRect(px, py, w / 2, h / 2, R);   // 内部 ≤ 0
+      /* Chrome 的 backdrop-filter url() 滤镜区域是矩形、不随 border-radius
+         裁切——圆角之外必须保持零位移，否则角落会露出被扭曲的背景。
+         留 1.5px 缓冲，让边缘拉力完整覆盖到边框（蒙版外扩会兜底裁掉） */
+      if (d > 1.5) return { x: u, y: v };
+      var s = smoothStep(0, -B, d);                    // 边缘 0 → 深处 1
+      var pull = rim * (1 - s) * (1 - s);              // 边缘拉力（px）
+      var nx = px / (w / 2), ny = py / (h / 2);        // 近似外法线（分量 ≤1）
+      return {
+        x: 0.5 + (u - 0.5) * (1 - mag) - (nx * pull) / w,
+        y: 0.5 + (v - 0.5) * (1 - mag) - (ny * pull) / h
+      };
+    };
+  }
+
+  function attachGlass(el) {
+    if (!supported) return;
+    ensureSvg();
+    var opts = {
+      radius: parseFloat(el.dataset.radius || '24'),
+      bezel: parseFloat(el.dataset.bezel || '26'),
+      rim: parseFloat(el.dataset.rim || '7')
+    };
+    var filter = null;
+    var build = function () {
+      var r = el.getBoundingClientRect();
+      var w = Math.round(r.width), h = Math.round(r.height);
+      if (w < 4 || h < 4) return;
+      var dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth <= 700 ? 1 : 1.5);
+      var map = buildMap(w, h, dpr, glassFragment(w, h, opts));
+      map.mask = buildMask(w, h, dpr, opts.radius);
+      if (!filter) filter = makeFilter(w, h);
+      setMap(filter, w, h, map);
+    };
+    build();
+    /* Chrome 时序：滤镜先进 DOM，下一帧再引用。
+       只挂 url()——blur/brightness 等会作用在矩形滤镜区域上，圆角处会露馅 */
+    requestAnimationFrame(function () {
+      if (filter) {
+        var bf = 'url(#' + filter.id + ')';
+        el.style.backdropFilter = bf;
+        el.style.webkitBackdropFilter = bf;
+      }
+    });
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(debounce(build, 140)).observe(el);
+    }
+  }
+
+  /* ============================================================
+   * 水面：一条低分辨率、持续重算的位移带，让湖活过来
+   * ==========================================================*/
+  function initWater() {
+    if (!supported || reduced) return;
+    var el = document.querySelector('[data-water]');
+    if (!el) return;
+    ensureSvg();
+
+    var LW = 264, LH = 54;                    // 低分辨率位移图，浏览器平滑放大
+    var canvas = document.createElement('canvas');
+    canvas.width = LW; canvas.height = LH;
+    var ctx = canvas.getContext('2d');
+    var AMP = 4;                              // 归一化上限（px），scale = 2*AMP
+    var filter = null;
+    var t = 0, last = 0, acc = 0, running = false, inView = true;
+
+    function regen() {
+      var img = ctx.createImageData(LW, LH);
+      var data = img.data;
+      for (var y = 0, i = 0; y < LH; y++) {
+        var v = y / LH;
+        for (var x = 0; x < LW; x++, i += 4) {
+          var u = x / LW;
+          var w1 = Math.sin(u * 12 + t * 1.7);
+          var w2 = Math.sin(u * 5.3 - t * 1.15 + v * 7);
+          var w3 = Math.sin((u + v) * 9 + t * 0.8);
+          var dx = w3 * 0.9;
+          var dy = (w1 * 0.6 + w2 * 0.5) * (0.4 + v * 0.9) * 2.2;
+          data[i]     = (0.5 + dx / (2 * AMP)) * 255;
+          data[i + 1] = (0.5 + dy / (2 * AMP)) * 255;
+          data[i + 2] = 0;
+          data[i + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    }
+
+    function setup() {
+      var r = el.getBoundingClientRect();
+      var w = Math.round(r.width), h = Math.round(r.height);
+      if (w < 4 || h < 4) return;
+      if (!filter) {
+        filter = makeFilter(w, h);
+        filter.dm.setAttribute('scale', String(2 * AMP));
+        /* 水面是直边全宽带，蒙版给一张纯白图（全通过）即可 */
+        filter.feMask.setAttribute('href', WHITE_PX);
+        filter.feMask.setAttributeNS(XL, 'xlink:href', WHITE_PX);
+        requestAnimationFrame(function () {
+          el.style.backdropFilter = 'url(#' + filter.id + ') brightness(1.04) saturate(1.1)';
+        });
+      } else {
+        filter.node.setAttribute('width', w);
+        filter.node.setAttribute('height', h);
+        filter.fe.setAttribute('width', w);
+        filter.fe.setAttribute('height', h);
+        filter.feMask.setAttribute('width', w);
+        filter.feMask.setAttribute('height', h);
+      }
+      var url = regen();
+      filter.fe.setAttribute('href', url);
+      filter.fe.setAttributeNS(XL, 'xlink:href', url);
+    }
+
+    function frame(ts) {
+      if (!running) return;
+      if (!last) last = ts;
+      var dt = ts - last; last = ts;
+      acc += dt;
+      if (acc >= 70) {                          // ~14fps 足够像水
+        t += acc / 1000; acc = 0;
+        var url = regen();
+        filter.fe.setAttribute('href', url);
+        filter.fe.setAttributeNS(XL, 'xlink:href', url);
+      }
+      requestAnimationFrame(frame);
+    }
+    function play() {
+      if (running || !inView || document.hidden) return;
+      running = true; last = 0;
+      requestAnimationFrame(frame);
+    }
+    function stop() { running = false; }
+
+    setup();
+    window.addEventListener('resize', debounce(setup, 200));
+    document.addEventListener('visibilitychange', function () {
+      document.hidden ? stop() : play();
+    });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (en) {
+        inView = en[0].isIntersecting;
+        inView ? play() : stop();
+      }).observe(el);
+    }
+    play();
+  }
+
+  /* ============================================================
+   * 进场：标题逐字弹簧升起 + 滚动渐显
+   * ==========================================================*/
+  function initTitle() {
+    var h1 = document.getElementById('title');
+    if (!h1 || reduced) return;
+    var text = h1.textContent;
+    h1.textContent = '';
+    h1.setAttribute('aria-label', text);
+    var frag = document.createDocumentFragment();
+    text.split('').forEach(function (chr) {
+      var box = document.createElement('span');
+      box.className = 'ch';
+      box.setAttribute('aria-hidden', 'true');
+      var inner = document.createElement('span');
+      inner.textContent = chr;
+      box.appendChild(inner);
+      frag.appendChild(box);
+    });
+    h1.appendChild(frag);
+    var chars = h1.querySelectorAll('.ch > span');
+    var fired = false;
+    function rise() {
+      if (fired) return;
+      fired = true;
+      for (var i = 0; i < chars.length; i++) {
+        (function (el, k) {
+          el.style.transition = 'transform 1s cubic-bezier(.2,.85,.25,1.12) ' + (0.08 + k * 0.055) + 's';
+          requestAnimationFrame(function () { el.style.transform = 'translateY(0)'; });
+        })(chars[i], i);
+      }
+    }
+    /* 字体就绪后升起效果最好，但最多等 450ms，保证任何情况下标题都会就位 */
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { setTimeout(rise, 60); });
+    }
+    setTimeout(rise, 450);
+  }
+
+  function initReveal() {
+    var items = document.querySelectorAll('[data-reveal]');
+    if (reduced || !('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          en.target.classList.add('in');
+          io.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ============================================================
+   * 卡片：指针倾斜 + 高光跟随（弹簧趋近，触屏关闭）
+   * ==========================================================*/
+  function initTilt() {
+    if (reduced || !window.matchMedia('(pointer: fine)').matches) return;
+    document.querySelectorAll('.card').forEach(function (card) {
+      var rx = 0, ry = 0, tx = 0, ty = 0, gx = 50, gy = 50, raf = null;
+      function tick() {
+        rx += (tx - rx) * 0.14;
+        ry += (ty - ry) * 0.14;
+        card.style.transform = 'perspective(900px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+        card.style.setProperty('--gx', gx + '%');
+        card.style.setProperty('--gy', gy + '%');
+        if (Math.abs(tx - rx) > 0.01 || Math.abs(ty - ry) > 0.01) {
+          raf = requestAnimationFrame(tick);
+        } else { raf = null; }
+      }
+      function wake() { if (!raf) raf = requestAnimationFrame(tick); }
+      card.addEventListener('pointermove', function (e) {
+        var r = card.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width;
+        var py = (e.clientY - r.top) / r.height;
+        tx = (0.5 - py) * 5.5;
+        ty = (px - 0.5) * 7;
+        gx = px * 100; gy = py * 100;
+        wake();
+      });
+      card.addEventListener('pointerleave', function () { tx = 0; ty = 0; wake(); });
+    });
+  }
+
+  /* ============================================================
+   * 「春」玻璃块：拖拽 + 惯性 + 边界回弹
+   * ==========================================================*/
+  function initHaru() {
+    var el = document.getElementById('haru');
+    if (!el) return;
+    var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    var vx = 0, vy = 0, lx = 0, ly = 0, lt = 0, raf = null;
+
+    function pin() {
+      var r = el.getBoundingClientRect();
+      el.style.right = 'auto';
+      el.style.left = r.left + 'px';
+      el.style.top = r.top + 'px';
+      el.style.bottom = 'auto';
+    }
+    function bounds(x, y) {
+      var r = el.getBoundingClientRect();
+      var pad = 8;
+      return {
+        x: Math.max(pad, Math.min(window.innerWidth - r.width - pad, x)),
+        y: Math.max(pad, Math.min(window.innerHeight - r.height - pad, y))
+      };
+    }
+    el.addEventListener('pointerdown', function (e) {
+      pin();
+      dragging = true;
+      el.setPointerCapture(e.pointerId);
+      sx = e.clientX; sy = e.clientY;
+      var r = el.getBoundingClientRect();
+      ox = r.left; oy = r.top;
+      lx = e.clientX; ly = e.clientY; lt = performance.now();
+      vx = vy = 0;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var p = bounds(ox + e.clientX - sx, oy + e.clientY - sy);
+      el.style.left = p.x + 'px';
+      el.style.top = p.y + 'px';
+      var now = performance.now(), dt = now - lt;
+      if (dt > 16) {
+        vx = (e.clientX - lx) / dt * 16;
+        vy = (e.clientY - ly) / dt * 16;
+        lx = e.clientX; ly = e.clientY; lt = now;
+      }
+    });
+    function release() {
+      if (!dragging) return;
+      dragging = false;
+      if (reduced) return;                       // 降级：松手即停
+      var x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+      function step() {
+        vx *= 0.94; vy *= 0.94;
+        x += vx; y += vy;
+        var r = el.getBoundingClientRect();
+        var pad = 8;
+        if (x < pad) { x = pad; vx = Math.abs(vx) * 0.45; }
+        if (y < pad) { y = pad; vy = Math.abs(vy) * 0.45; }
+        if (x > window.innerWidth - r.width - pad) { x = window.innerWidth - r.width - pad; vx = -Math.abs(vx) * 0.45; }
+        if (y > window.innerHeight - r.height - pad) { y = window.innerHeight - r.height - pad; vy = -Math.abs(vy) * 0.45; }
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        if (Math.abs(vx) > 0.05 || Math.abs(vy) > 0.05) {
+          raf = requestAnimationFrame(step);
+        } else { raf = null; }
+      }
+      raf = requestAnimationFrame(step);
+    }
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+  }
+
+  /* ============================================================*/
+  function initClock() {
+    var el = document.getElementById('clock');
+    if (!el) return;
+    function tick() {
+      el.textContent = new Date().toLocaleTimeString('zh-CN', {
+        hour12: false, timeZone: 'Asia/Shanghai'
+      });
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  function init() {
+    document.querySelectorAll('[data-glass]').forEach(attachGlass);
+    initWater();
+    initTitle();
+    initReveal();
+    initTilt();
+    initHaru();
+    initClock();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
