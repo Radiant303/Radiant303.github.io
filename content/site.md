@@ -37,4 +37,4 @@ sub: 这里放我想认真写下来的东西：技术、生活，以及那些值
 who: Radiant303
 note: 这个页面也一直在改——就像项目，像代码，像我自己。
 - [github.com/Radiant303](https://github.com/Radiant303)
-- [3511078185@qq.com](mailto:3511078185@qq.com)
+- [radiant303@qq.com](mailto:radiant303@qq.com)
