@@ -22,7 +22,7 @@ contact: 联系
 title: 关于我
 - 身份 | 在校大学生
 - 方向 | AI 应用· 后端
-- 技术栈 | Java · Python · Agent
+- 技术栈 | OOP · Agent
 - 联系 | [GitHub](https://github.com/Radiant303) · [Email](mailto:3511078185@qq.com)
 
 ## work
