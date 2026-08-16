@@ -8,7 +8,7 @@
 brand: Radiant303
 title: Hello, World.
 sub: 我是 Radiant303。欢迎来到我的主页——这里记录着我在做什么想什么。
-hint: 我们凝望着最初的凝望，感到另一颗心跨越时空，望见**生命的力量之和**。
+hint: 如果我明天没死，说明我昨天活着。
 time: 本地时间
 cue: SCROLL
 
