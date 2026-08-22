@@ -42,9 +42,9 @@ h1 {
 .head-rule::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
 
 /* Markdown 排版：长文阅读的密度与颜色（骨架在 base.css） */
-/* 正文用霞鹜文楷 GB（楷体感、为屏幕阅读优化）；CDN 挂了就退回系统楷体，再退衬线 */
+/* 正文用系统楷体（楷体 / 华文楷体）；没有系统楷体的设备退回霞鹜文楷 GB，再退衬线 */
 .prose {
-  font-family: "LXGW WenKai GB", "Kaiti SC", "STKaiti", "KaiTi", var(--serif);
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "LXGW WenKai GB", var(--serif);
   font-size: 16.5px; line-height: 1.95; color: #191b1f;  /* 中性近黑，长文阅读对比度足够 */
   text-align: justify; text-justify: inter-ideograph;
 }
