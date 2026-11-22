@@ -27,11 +27,11 @@ title: 关于我
 
 ## work
 title: 做的东西
-sub: 完整的软件、小工具、说不上名字的实验，还有一些学到一半的笔记。
+sub: 
 
 ## articles
 title: 文章
-sub: 这里放我想认真写下来的东西：技术、生活，以及那些值得慢慢说完的事。
+sub: 
 
 ## footer
 who: Radiant303
