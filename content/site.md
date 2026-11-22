@@ -7,8 +7,8 @@
 ## hero
 brand: Radiant303
 title: Hello, World.
-sub: 我是 Radiant303。欢迎来到我的主页——这里记录着我在做什么想什么。
-hint: 如果我明天没死，说明我昨天活着。
+sub: 我是 Radiant303。欢迎来到我的主页。
+hint: 东风欲晓，莫道君行早
 time: 本地时间
 cue: SCROLL
 
@@ -26,15 +26,15 @@ title: 关于我
 - 联系 | [GitHub](https://github.com/Radiant303) · [Email](mailto:3511078185@qq.com)
 
 ## work
-title: 做的东西
-sub: 
+title: 开源项目
+sub: 一定要爱着点什么，恰似草木对光阴的钟情。
 
 ## articles
 title: 文章
-sub: 
+sub: 生活不是活过的日子，而是记住的日子。
 
 ## footer
 who: Radiant303
-note: 这个页面也一直在改——就像项目，像代码，像我自己。
+note: 一个人只拥有此生此世是不够的，他还应该拥有诗意的世界。
 - [github.com/Radiant303](https://github.com/Radiant303)
 - [radiant303@qq.com](mailto:radiant303@qq.com)
